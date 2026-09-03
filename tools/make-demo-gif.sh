@@ -39,11 +39,20 @@ with_timeout() {
 # and AVFoundation crops relative to the captured display, so a desktop x of
 # 3228 is simply off the edge of the device. The Hammerspoon script exposes the
 # card as `dictateHud` for exactly this. Override with DICTATE_GIF_RECT="x:y:w:h".
+# Pin the card to the screen it is on right now, for the length of the take.
+# Without this, pressing the hotkey while the OTHER monitor has focus moves the
+# card out of the rectangle computed below — which is how you get fourteen
+# seconds of empty wallpaper and no warning.
+unpin() { with_timeout 10 hs -c 'dictatePinnedScreen = nil return "unpinned"' >/dev/null 2>&1 || true; }
+trap 'unpin; rm -rf "$WORK"' EXIT
+
 GEOM="$(with_timeout 15 hs -c '
   if not dictateHud then return "" end
+  local scr0 = hs.screen.find(hs.geometry.rect(dictateHud:frame())) or hs.screen.mainScreen()
+  dictatePinnedScreen = scr0
   local PAD = 40
   local f = dictateHud:frame()
-  local scr = hs.screen.find(hs.geometry.rect(f.x, f.y, f.w, f.h)) or hs.screen.mainScreen()
+  local scr = scr0
   local ff = scr:fullFrame()
   local scale = (scr:currentMode() or {}).scale or 1
   return string.format("%d:%d:%d:%d:%d:%d",
@@ -81,10 +90,35 @@ SCREEN_INDEX="${DICTATE_GIF_SCREEN:-$(find_screen_device || true)}"
 echo "▶︎ screen device $SCREEN_INDEX, capturing ${W}x${H} at ${X},${Y} for ${DURATION}s"
 echo "   start dictating now: Ctrl+Alt+D, talk, Ctrl+Alt+D"
 
+# Watch whether the card is actually on screen at some point during the take.
+#
+# Brightness is not a usable proxy — a bright window behind the card passes a
+# "did anything light up" test. Hammerspoon knows the answer exactly, so ask it.
+# Writing out fourteen seconds of wallpaper under a cheerful checkmark is worse
+# than failing: you find out when it is already in the README.
+CARD_SEEN="$WORK/card-seen"
+(
+  for _ in $(seq 1 "$DURATION"); do
+    if with_timeout 5 hs -c 'return tostring(dictateHud:isShowing())' 2>/dev/null | grep -q true; then
+      : > "$CARD_SEEN"; break
+    fi
+    sleep 1
+  done
+) & POLL_PID=$!
+
 with_timeout "$((DURATION + 30))" ffmpeg -hide_banner -loglevel error \
   -f avfoundation -pixel_format uyvy422 -framerate 30 -capture_cursor 0 \
   -i "$SCREEN_INDEX" -t "$DURATION" \
   -vf "crop=${W}:${H}:${X}:${Y}" -c:v qtrle -y "$WORK/raw.mov" </dev/null
+
+kill -9 "$POLL_PID" 2>/dev/null || true
+wait "$POLL_PID" 2>/dev/null || true
+if [ ! -f "$CARD_SEEN" ]; then
+  echo "x The card never appeared while the capture was running." >&2
+  echo "  Nothing was written. Run this again, and press Ctrl+Alt+D AFTER you see" >&2
+  echo "  the 'capturing' line — the take is only $DURATION seconds long." >&2
+  exit 2
+fi
 
 # Two passes: a palette built from the whole clip, then applied. A single-pass
 # GIF picks its 256 colours from the first frame, which wrecks the level meter.

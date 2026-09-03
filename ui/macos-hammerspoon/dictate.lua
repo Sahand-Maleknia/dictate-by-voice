@@ -66,8 +66,16 @@ local function showBars(show)
   end
 end
 
+-- Which screen the card belongs on.
+--
+-- Normally the one with focus, so the card appears where you are working. The
+-- demo-GIF tool sets `dictatePinnedScreen` for the length of a take: it has to
+-- compute a fixed capture rectangle BEFORE you start talking, and without the
+-- pin, pressing the hotkey with the other monitor focused moves the card out of
+-- that rectangle — which records fourteen seconds of empty wallpaper.
+dictatePinnedScreen = nil
 local function positionHud()
-  local f = hs.screen.mainScreen():frame()
+  local f = (dictatePinnedScreen or hs.screen.mainScreen()):frame()
   hud:topLeft({ x = f.x + (f.w - W) / 2, y = f.y + f.h - H - 90 })
 end
 
