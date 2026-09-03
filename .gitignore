@@ -1,0 +1,7 @@
+node_modules/
+dist/
+# Secrets: every .env variant is ignored, except the checked-in template.
+.env*
+!.env.example
+.DS_Store
+*.log

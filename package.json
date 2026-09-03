@@ -1,0 +1,29 @@
+{
+  "name": "@siavash-smf/dictate",
+  "version": "0.1.0",
+  "description": "Press a key, talk, paste. Local-first voice dictation for the desktop, tuned for Persian (and good at everything else).",
+  "type": "module",
+  "license": "MIT",
+  "author": "siavash-smf",
+  "repository": { "type": "git", "url": "git+https://github.com/siavash-smf/dictate.git" },
+  "keywords": ["dictation", "speech-to-text", "persian", "farsi", "voice", "whisper-alternative", "gemini", "macos"],
+  "engines": { "node": ">=20" },
+  "bin": { "dictate": "dist/cli.js" },
+  "files": ["dist", "ui", "README.md", "LICENSE"],
+  "scripts": {
+    "dictate": "tsx src/cli.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "^4.0.21",
+    "ai": "^7.0.34",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}
