@@ -1,137 +1,151 @@
 # dictate 🎙️
 
-Press a key, talk, paste. A small local-first dictation tool for the desktop —
-tuned for **Persian**, and good at everything else.
+یک کلید بزن، حرف بزن، پیست کن. ابزار کوچکی برای تبدیل صدا به متن روی دسکتاپ —
+ساخته‌شده برای **فارسی**، و روی زبان‌های دیگر هم خوب کار می‌کند.
 
-It records from your microphone, sends the clip once to Google's Gemini, and
-puts the text on your clipboard. No dictation service account, no background
-daemon uploading anything, no subscription: your own API key, your own machine.
+از میکروفونت ضبط می‌کند، فایل را یک بار به Gemini می‌فرستد، و متن را روی
+کلیپ‌بورد می‌گذارد. نه اشتراک ماهانه، نه سرویس دیکتهٔ واسط، نه سرویسی که
+پس‌زمینه چیزی آپلود کند: کلید API خودت، کامپیوتر خودت.
 
 ```
-Ctrl+Alt+D   start / stop recording  →  text is on your clipboard
-Ctrl+Alt+R   that came out wrong — transcribe the same audio again
+Ctrl+Alt+D   شروع / پایان ضبط  →  متن روی کلیپ‌بورد است
+Ctrl+Alt+R   اشتباه نوشت؟ همان صدا را دوباره تبدیل کن
 ```
 
-> **Status:** macOS today. The code is structured for Windows and Linux (one
-> file each, see [CONTRIBUTING.md](CONTRIBUTING.md)) but those are not written
-> yet, and this README will not claim they are.
+> **وضعیت:** روی **macOS** ساخته و تست شده. کد **Windows** نوشته شده ولی هنوز
+> روی ویندوز واقعی اجرا نشده — اگر ویندوز داری، تستش کن و issue بزن.
+> لینوکس هنوز نوشته نشده و [CONTRIBUTING.md](CONTRIBUTING.md) می‌گوید چطور
+> اضافه‌اش کنی (یک فایل است).
 
-## Why this exists
+## چرا ساخته شد
 
-Built for dictating long, conversational **Persian** — the case most dictation
-tools handle badly. Persian speech here stays Persian and stays conversational
-(محاوره‌ای): it is not translated, and it is not formalised into written Persian.
-English, and technical terms inside Persian speech, come through as spoken.
+برای دیکتهٔ فارسیِ طولانی و محاوره‌ای — همان چیزی که بیشتر ابزارهای موجود بد
+انجامش می‌دهند. فارسی اینجا فارسی می‌ماند و محاوره‌ای می‌ماند: نه ترجمه
+می‌شود، نه به فارسی کتابی تبدیل. اصطلاح‌های انگلیسی داخل حرف فارسی هم همان‌طور
+که گفته شده‌اند نوشته می‌شوند.
 
-## Requirements
+## پیش‌نیازها
 
-- macOS, [Node.js](https://nodejs.org) 20+, and ffmpeg (`brew install ffmpeg`)
-- A free Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey)
-- [Hammerspoon](https://www.hammerspoon.org) — only if you want the hotkeys and HUD
+- [Node.js](https://nodejs.org) نسخهٔ ۲۰ به بالا و ffmpeg (`brew install ffmpeg`)
+- یک کلید رایگان Gemini از [Google AI Studio](https://aistudio.google.com/apikey)
+- [Hammerspoon](https://www.hammerspoon.org) — فقط اگر هات‌کی و پنجرهٔ شناور را می‌خواهی (روی ویندوز: AutoHotkey v2)
 
-## Install
+## نصب
 
 ```bash
 git clone https://github.com/siavash-smf/dictate.git
 cd dictate
 npm install
-cp .env.example .env      # then paste your key into it
-npm run dictate           # talk, press Enter
+cp .env.example .env      # کلیدت را داخلش بگذار
+npm run dictate           # حرف بزن، Enter بزن
 ```
 
-The first run will ask macOS for microphone permission for whichever terminal
-you launched it from.
+اولین اجرا از macOS اجازهٔ میکروفون می‌خواهد، برای همان ترمینالی که از آن
+اجرا کرده‌ای.
 
-## Use
+## استفاده
 
 ```bash
-npm run dictate                  # record, Enter to stop
-npm run dictate -- --auto        # record, stops by itself when you go quiet
-npm run dictate -- --list        # which microphones ffmpeg can see
-npm run dictate -- 2             # force input device #2
+npm run dictate                  # ضبط، Enter برای پایان
+npm run dictate -- --auto        # ضبط؛ وقتی ساکت شوی خودش تمام می‌شود
+npm run dictate -- --list        # لیست میکروفون‌ها
+npm run dictate -- 2             # استفاده از دستگاه شمارهٔ ۲
 
-npm run dictate -- --again                    # it got it wrong — try again
-npm run dictate -- --again "Siavash, Sadaf"   # …and here are the right spellings
+npm run dictate -- --again                    # اشتباه نوشت — دوباره امتحان کن
+npm run dictate -- --again "سیاوش، صدف"       # …و املای درست را هم بده
 ```
 
-### `--again` is the interesting one
+### `--again` بخش جالب ماجراست
 
-Getting a name wrong should not cost you the recording. The last clip is kept,
-so `--again` re-sends that same audio instead of making you say it all over.
+اشتباه نوشتن یک اسم نباید به قیمت از دست دادن کل ضبط تمام شود. آخرین فایل صدا
+نگه داشته می‌شود، پس `--again` همان صدا را دوباره می‌فرستد و لازم نیست دوباره
+حرف بزنی.
 
-The hint matters more than the retry. The first pass runs at `temperature: 0`,
-which is deterministic — an unguided second attempt returns the *identical*
-text. So: with no hint, the retry samples differently; with a hint, it stays
-deterministic and simply uses the spellings you gave it. Names, brands, and
-jargon are exactly what a model cannot guess from audio.
+راهنما دادن از خود retry مهم‌تر است. پاس اول با `temperature: 0` اجرا می‌شود،
+یعنی قطعی است — تلاش دوم بدون راهنما **دقیقاً همان متن** را برمی‌گرداند. پس:
+بدون راهنما، retry با نمونه‌برداری متفاوت اجرا می‌شود؛ با راهنما، قطعی می‌ماند
+و صرفاً املایی را که داده‌ای رعایت می‌کند. اسم‌ها، برندها و اصطلاح‌ها دقیقاً
+همان چیزهایی هستند که مدل از روی صدا نمی‌تواند حدس بزند.
 
-## Hotkeys and the floating HUD (optional)
+## هات‌کی و پنجرهٔ شناور (اختیاری)
 
-The GUI layer is a Hammerspoon script: a menu-bar mic, a floating recorder card
-with a level meter and a timer, and the two hotkeys above.
+**macOS —** یک اسکریپت Hammerspoon: آیکن میکروفون در نوار منو، یک کارت شناور با
+نمایشگر صدا و تایمر، و دو هات‌کی بالا.
 
-1. Install [Hammerspoon](https://www.hammerspoon.org) and grant it Accessibility permission.
-2. Copy `ui/macos-hammerspoon/dictate.lua` into `~/.hammerspoon/init.lua`.
-3. Set `REPO` at the top of that file to where you cloned this.
-4. Reload the config.
+۱. [Hammerspoon](https://www.hammerspoon.org) را نصب کن و به آن دسترسی Accessibility بده.
+۲. `ui/macos-hammerspoon/dictate.lua` را داخل `~/.hammerspoon/init.lua` کپی کن.
+۳. مقدار `REPO` در بالای فایل را به مسیر کلون‌شده تغییر بده.
+۴. کانفیگ را reload کن.
 
-The hotkeys bind to the **physical** D and R keys, so they keep working under a
-Persian (or any non-Latin) keyboard layout.
+هات‌کی‌ها به **کلید فیزیکی** D و R وصل‌اند، پس با چیدمان کیبورد فارسی هم کار
+می‌کنند.
 
-## Privacy
+**Windows —** `ui/windows-autohotkey/dictate.ahk` با AutoHotkey v2. مقدار `REPO`
+را ست کن و اجرایش کن (هنوز تست نشده).
 
-The audio goes from your machine to the Gemini API and nowhere else. Exactly one
-clip is kept on disk — the most recent, at `/tmp/dictate-last.ogg` — so
-`--again` has something to re-send; every recording overwrites it. Set
-`DICTATE_KEEP_LAST=0` to delete it the moment it is transcribed (which turns
-`--again` off).
+## حریم خصوصی
 
-## Configuration
+صدا از کامپیوتر تو مستقیم به Gemini می‌رود و جای دیگری نه. دقیقاً **یک** فایل
+صوتی روی دیسک می‌ماند — آخرین ضبط، در `/tmp/dictate-last.ogg` — تا `--again`
+چیزی برای فرستادن داشته باشد، و هر ضبط جدید رویش می‌نویسد. با
+`DICTATE_KEEP_LAST=0` صدا بلافاصله بعد از تبدیل پاک می‌شود (و `--again` غیرفعال).
 
-| Variable | Default | Meaning |
+## تنظیمات
+
+| متغیر | پیش‌فرض | معنی |
 |---|---|---|
-| `GOOGLE_GENERATIVE_AI_API_KEY` | — | required |
-| `DICTATE_MIC` | auto | force an input device id |
-| `DICTATE_MAX_SECONDS` | `600` | hard cap on one recording |
-| `DICTATE_KEEP_LAST` | `1` | `0` deletes the audio immediately |
-| `DICTATE_STOP_FILE` | `/tmp/dictate-hold.stop` | how a GUI ends a `--hold` recording |
-| `DICTATE_LAST_CLIP` | `/tmp/dictate-last.ogg` | where the retry clip lives |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | — | الزامی |
+| `DICTATE_MIC` | خودکار | انتخاب دستی دستگاه ورودی |
+| `DICTATE_MAX_SECONDS` | `600` | سقف مدت یک ضبط |
+| `DICTATE_KEEP_LAST` | `1` | `0` یعنی صدا فوراً پاک شود |
+| `DICTATE_STOP_FILE` | `/tmp/dictate-hold.stop` | رابط گرافیکی با این فایل ضبط را تمام می‌کند |
+| `DICTATE_LAST_CLIP` | `/tmp/dictate-last.ogg` | محل فایل retry |
 
-## How it works
+## چطور کار می‌کند
 
 ```
-ffmpeg (Opus 32 kbps mono)  →  silence gate  →  Gemini  →  clipboard
+ffmpeg (اوپوس ۳۲k مونو)  →  گیت سکوت  →  Gemini  →  کلیپ‌بورد
 ```
 
-Four decisions in here are load-bearing, and each one is commented in the source
-with the failure that produced it:
+چهار تصمیم در این مسیر حیاتی‌اند و هرکدام در سورس با همان خرابی‌ای که تولیدش
+کرده کامنت شده‌اند:
 
-- **Opus, not WAV.** WAV is 32 kB/s, so two minutes of talking exceeded the
-  model's inline-audio ceiling and was rejected before it was ever heard.
-- **Thinking set to minimal.** On Gemini 3 the thought summary arrives as an
-  ordinary *text* part, so the SDK's `.text` glues the model's monologue onto
-  the front of your transcript — and onto your clipboard.
-- **A deterministic silence gate.** Given silence the model does not say
-  "silence": it invents a fluent, plausible note. The guard is ffmpeg
-  `volumedetect`, not a prompt rule — the prompt version makes the model refuse
-  perfectly good long clips.
-- **Explicit UTF-8 for the clipboard.** `pbcopy` takes its encoding from
-  `LANG`/`LC_CTYPE` and falls back to *Mac OS Roman* when a GUI launcher hands
-  the process a bare environment. That is how a clean Persian transcript
-  reaches the clipboard as `ÿ≥ŸÑÿßŸÖ`.
+- **اوپوس، نه WAV.** فرمت WAV ثانیه‌ای ۳۲ کیلوبایت است؛ دو دقیقه حرف زدن از سقف
+  صوت مدل رد می‌شد و کلیپ قبل از اینکه اصلاً شنیده شود رد می‌شد.
+- **thinking روی حداقل.** روی Gemini 3 خلاصهٔ فکر مدل به‌صورت یک بخش *متنی*
+  عادی برمی‌گردد، پس `.text` در SDK مونولوگ داخلی مدل را می‌چسباند به اول
+  متن — و به کلیپ‌بورد تو.
+- **گیت سکوتِ قطعی.** مدل در برابر سکوت نمی‌گوید «سکوت»؛ یک یادداشت روان و
+  کاملاً ساختگی می‌نویسد. محافظ باید `volumedetect` در ffmpeg باشد نه یک قانون
+  در پرامپت — نسخهٔ پرامپتی باعث می‌شود مدل کلیپ‌های طولانیِ کاملاً سالم را رد کند.
+- **UTF-8 صریح برای کلیپ‌بورد.** `pbcopy` انکودینگ را از `LANG`/`LC_CTYPE`
+  می‌خواند و وقتی یک لانچر گرافیکی محیط خالی پاس می‌دهد به *Mac OS Roman*
+  برمی‌گردد. این‌طوری یک متن فارسی سالم به شکل `ÿ≥ŸÑÿßŸÖ` روی کلیپ‌بورد می‌نشیند.
 
-## License
+## لایسنس
 
 MIT
 
 ---
 
-## فارسی
+## English
 
-ابزار کوچکی برای تبدیل صدا به متن، مخصوص فارسی. `Ctrl+Alt+D` را می‌زنی، حرف
-می‌زنی، دوباره می‌زنی — متن روی کلیپ‌بورد است. اگر کلمه‌ای را اشتباه نوشت،
-`Ctrl+Alt+R` همان صدای قبلی را دوباره تبدیل می‌کند و می‌توانی املای درست
-اسم‌ها را هم به آن بدهی.
+**dictate** is a small local-first dictation tool for the desktop, built for
+Persian first. Press `Ctrl+Alt+D`, talk, press it again — the transcript is on
+your clipboard. If it got a word wrong, `Ctrl+Alt+R` re-transcribes the same
+audio, and you can hand it the correct spellings instead of saying everything
+again.
 
-فارسی محاوره‌ای، محاوره‌ای می‌ماند: نه ترجمه می‌شود، نه به فارسی کتابی تبدیل.
-کلید API رایگان از Google AI Studio می‌گیری و صدا فقط به همان‌جا می‌رود.
+The interface is in Persian, because that is who it is for. The code, the
+comments and [CONTRIBUTING.md](CONTRIBUTING.md) are in English, so the project
+stays contributable — all user-facing strings live in one file
+([`src/messages.ts`](src/messages.ts)), which is also what makes an English UI a
+small change rather than a hunt.
+
+Recording, the silence gate and the model call are OS-independent; each platform
+supplies five primitives ([`src/platform/index.ts`](src/platform/index.ts)).
+macOS is written and tested, Windows is written and **untested**, Linux is open.
+
+Requires Node 20+, ffmpeg, and a free [Gemini API key](https://aistudio.google.com/apikey).
+Nothing is uploaded anywhere but that API; one clip is kept on disk so the retry
+has something to re-send. MIT.

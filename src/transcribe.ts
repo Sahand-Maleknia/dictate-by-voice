@@ -13,6 +13,7 @@
 import 'dotenv/config';
 import { google, type GoogleLanguageModelOptions } from '@ai-sdk/google';
 import { generateText } from 'ai';
+import { M } from './messages.js';
 
 /**
  * Model tiers, best first.
@@ -104,10 +105,10 @@ function describeFailure(err: Error, megabytes: number): string {
   // Google answers oversized inline audio with a generic 500 rather than a
   // size error, so length is the first thing to suspect on a big clip.
   if ((internal || overloaded) && megabytes > 1.5) {
-    return `The service refused this ${megabytes.toFixed(1)} MB clip — long recordings are the usual cause. Try one under about five minutes.`;
+    return M.serviceRefusedBig(megabytes.toFixed(1));
   }
-  if (overloaded) return 'The service is busy right now. Wait a minute and try again.';
-  if (internal) return 'The service hit an internal error on this clip. Try recording it again.';
+  if (overloaded) return M.serviceBusy;
+  if (internal) return M.serviceInternal;
   return raw;
 }
 
@@ -118,18 +119,14 @@ export async function transcribeAudio(
   options: TranscribeOptions = {},
 ): Promise<string> {
   if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
-    throw new Error(
-      'GOOGLE_GENERATIVE_AI_API_KEY is not set. Copy .env.example to .env and paste a key from https://aistudio.google.com/apikey',
-    );
+    throw new Error(M.missingKey);
   }
-  if (!audioBase64) throw new Error('No audio received.');
+  if (!audioBase64) throw new Error(M.noAudio);
 
   const bytes = Math.floor((audioBase64.length * 3) / 4);
   const megabytes = bytes / 1e6;
   if (bytes > MAX_CLIP_BYTES) {
-    throw new Error(
-      `This clip is ${megabytes.toFixed(1)} MB, over the ${MAX_CLIP_BYTES / 1e6} MB limit. Record a shorter one.`,
-    );
+    throw new Error(M.clipTooBig(megabytes.toFixed(1), MAX_CLIP_BYTES / 1e6));
   }
 
   const hint = options.hint?.trim();
@@ -168,10 +165,10 @@ export async function transcribeAudio(
         maxRetries: 1,
       });
 
-      if (finishReason === 'content-filter') throw new Error('The model refused this clip.');
+      if (finishReason === 'content-filter') throw new Error(M.refused);
       const transcript = spokenTextOnly(content, text).trim();
       if (!transcript) {
-        throw new Error('Nothing could be transcribed — the clip may be silent or too short.');
+        throw new Error(M.emptyTranscript);
       }
       return transcript;
     } catch (err) {

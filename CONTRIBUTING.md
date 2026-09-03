@@ -1,7 +1,15 @@
 # Contributing
 
-The most useful contribution right now is **a platform**. Windows and Linux are
-each one file, and the interface they have to satisfy is deliberately tiny.
+The most useful contribution right now is **running the Windows code on an
+actual Windows machine**. It is written (`src/platform/windows.ts`,
+`ui/windows-autohotkey/dictate.ahk`) but has never executed there — the author
+has no Windows box. The four spots most likely to be wrong are marked `TESTME`
+in the source. Linux is not written at all; it is one file.
+
+A note on strings: user-facing text is Persian and lives in
+[`src/messages.ts`](src/messages.ts). Add new strings there, not inline — code,
+comments and this document stay English so the project is contributable by
+people who do not read Persian.
 
 ## Adding an OS
 
@@ -23,15 +31,25 @@ interface Platform {
 }
 ```
 
-### Windows — what it takes
+### Windows — what is already written, and what to check
 
-| primitive | macOS (written) | Windows |
+`src/platform/windows.ts` implements all five primitives; the table is what it
+does and why. `parseDshowDevices` is covered by tests against captured output
+from both ffmpeg generations (`npm test`) — that part is verified. Everything
+that needs a real Windows machine is not.
+
+| primitive | macOS (tested) | Windows (untested) |
 |---|---|---|
-| `recordInput` | `-f avfoundation -i :0` | `-f dshow -i audio="Microphone (Realtek)"` |
+| `recordInput` | `-f avfoundation -i :0` | `-f dshow -i audio=@device_cm_{…}` — the *alternative name*, which is unique where friendly names are not |
 | `listDevices` | parse `-list_devices` (AVFoundation block) | `ffmpeg -list_devices true -f dshow -i dummy` — a **different** output format, and devices are addressed by NAME, not index. `AudioDevice.id` is a string for exactly this reason. |
+| `pasteKey` | `Cmd+V` | `Ctrl+V` |
 | `copyText` | `pbcopy` + forced UTF-8 env | PowerShell `Set-Clipboard`, reading the text as explicit UTF-8 |
 | `notify` | `osascript display notification` | PowerShell toast (BurntToast), or skip and return early |
 | `cue` | `afplay` | `[Console]::Beep`, or `System.Media.SoundPlayer` |
+
+The GUI: `ui/windows-autohotkey/dictate.ahk` (AutoHotkey v2) mirrors the
+Hammerspoon card and drives the same CLI. It detects "finished" by watching the
+launched process exit, since the CLI gives no other signal.
 
 **Do not use `clip.exe`.** It decodes stdin with the console codepage (cp1252 by
 default), which is the same class of bug the macOS implementation already has a
@@ -71,6 +89,7 @@ npm run dictate -- --again
 
 ```bash
 npm run typecheck
+npm test
 ```
 
 Keep the comment style: explain *why* a non-obvious line exists, ideally naming

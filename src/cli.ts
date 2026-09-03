@@ -8,7 +8,7 @@
  *   dictate --list          # show the microphones ffmpeg can see
  *   dictate 2               # force input device #2
  *   dictate --again         # re-transcribe the last clip (it came back wrong)
- *   dictate --again "Siavash, Careerpreneur"   # …telling it the right words
+ *   dictate --again "سیاوش، کارپرنور"          # …telling it the right words
  *
  * The audio is recorded locally, sent once to Gemini, and then kept only as
  * the single most recent clip so `--again` can re-run it. Set
@@ -23,6 +23,7 @@ import { currentPlatform, type AudioDevice, type Platform } from './platform/ind
 import { hasAudibleSpeech, record } from './record.js';
 import { transcribeAudio } from './transcribe.js';
 import { LAST_CLIP, STOP_FILE } from './paths.js';
+import { M } from './messages.js';
 
 const args = process.argv.slice(2);
 const has = (...names: string[]) => names.some((n) => args.includes(n));
@@ -51,7 +52,7 @@ function chooseDevice(devices: AudioDevice[]): AudioDevice {
   const requested = args.find((a) => /^\d+$/.test(a)) ?? process.env.DICTATE_MIC;
   if (requested) {
     const found = devices.find((d) => d.id === requested);
-    if (!found) throw new Error(`No audio device #${requested}. Run with --list to see them.`);
+    if (!found) throw new Error(M.noSuchDevice(requested));
     return found;
   }
   // Prefer a real microphone over the built-in one when both are present:
@@ -59,7 +60,7 @@ function chooseDevice(devices: AudioDevice[]): AudioDevice {
   const external = devices.find((d) => /r[øo]de|podmic|yeti|shure|usb/i.test(d.label));
   const builtin = devices.find((d) => /built-?in|macbook.*microphone/i.test(d.label));
   const device = external ?? builtin ?? devices[0];
-  if (!device) throw new Error('No microphones found. Is ffmpeg installed and mic permission granted?');
+  if (!device) throw new Error(M.noDevices);
   return device;
 }
 
@@ -85,24 +86,24 @@ async function transcribeClip(platform: Platform, clipPath: string, hint: string
   // caught by hasAudibleSpeech, not by its size (Opus encodes silence down to
   // almost nothing, so bytes alone cannot tell them apart).
   if (audio.byteLength < 1200) {
-    return fail(platform, 'That was too short — nothing was captured.', 'Nothing heard');
+    return fail(platform, M.tooShort, M.nothingHeard);
   }
   if (!(await hasAudibleSpeech(clipPath))) {
-    return fail(platform, 'No sound in the recording — nothing was said, or the mic was muted.', 'Nothing heard');
+    return fail(platform, M.noSpeech, M.nothingHeard);
   }
 
-  process.stdout.write('… transcribing\n');
+  process.stdout.write(M.transcribing);
   const text = await transcribeAudio(audio.toString('base64'), 'audio/ogg', {
     hint: hint || undefined,
     retry: AGAIN,
   });
 
   await platform.copyText(text);
-  console.log('\n──────── transcript ────────');
+  console.log(M.transcriptTop);
   console.log(text);
-  console.log('────────────────────────────');
-  console.log('✓ copied to the clipboard — paste it.');
-  if (HEADLESS) platform.notify('Text ready — paste it');
+  console.log(M.transcriptBottom);
+  console.log(M.copied(platform.pasteKey));
+  if (HEADLESS) platform.notify(M.copiedBanner(platform.pasteKey));
 }
 
 /** Report a soft failure: a banner with no terminal, an exception with one. */
@@ -114,22 +115,7 @@ function fail(platform: Platform, message: string, banner: string): void {
 
 async function main(): Promise<void> {
   if (HELP) {
-    console.log(
-      [
-        'dictate — press a key, talk, paste.',
-        '',
-        '  dictate                    record, Enter to stop',
-        '  dictate --auto             record, stops when you go quiet',
-        '  dictate --hold             record until the stop-file appears (for a GUI)',
-        '  dictate --again [words]    re-transcribe the last clip, optionally',
-        '                             telling it the words it got wrong',
-        '  dictate --list             list input devices',
-        '  dictate 2                  use device #2',
-        '',
-        `stop-file: ${STOP_FILE}`,
-        `last clip: ${LAST_CLIP}`,
-      ].join('\n'),
-    );
+    console.log(M.help(STOP_FILE, LAST_CLIP));
     return;
   }
 
@@ -142,9 +128,9 @@ async function main(): Promise<void> {
 
   if (AGAIN) {
     if (!existsSync(LAST_CLIP)) {
-      return fail(platform, 'No previous recording found — record one first.', 'Nothing to retry');
+      return fail(platform, M.noPreviousClip, M.noPreviousClipBanner);
     }
-    console.log(HINT ? `↻ re-transcribing the last clip, correcting: ${HINT}` : '↻ re-transcribing the last clip');
+    console.log(HINT ? M.againWithHint(HINT) : M.again);
     // The clip is deliberately left in place: a third attempt with a better
     // hint is exactly what you want after a second one that still missed a word.
     await transcribeClip(platform, LAST_CLIP, HINT);
@@ -160,11 +146,7 @@ async function main(): Promise<void> {
     try { unlinkSync(STOP_FILE); } catch { /* fine */ }
   }
 
-  process.stdout.write(
-    HOLD ? '🎙️  recording… click again to stop.\n'
-      : AUTO ? '🎙️  recording… it stops when you go quiet.\n'
-        : '🎙️  recording… talk, then press Enter.\n',
-  );
+  process.stdout.write(HOLD ? M.recordingHold : AUTO ? M.recordingAuto : M.recordingEnter);
 
   const clipPath = await record(platform, {
     device,
@@ -184,12 +166,12 @@ async function main(): Promise<void> {
 
 main().catch(async (err: unknown) => {
   const message = (err as Error).message;
-  console.error(`✗ dictate: ${message}`);
+  console.error(M.error(message));
   // Carry the reason into the banner: with no terminal attached this is the
   // only thing the user gets to see, and "error" alone is undiagnosable.
   if (HEADLESS) {
     await currentPlatform()
-      .then((p) => p.notify(`Error: ${message.slice(0, 140)}`))
+      .then((p) => p.notify(M.errorBanner(message.slice(0, 140))))
       .catch(() => {});
   }
   process.exit(1);

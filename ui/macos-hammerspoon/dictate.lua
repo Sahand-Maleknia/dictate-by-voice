@@ -77,7 +77,7 @@ local function finish(code, failTitle, failSub)
   showBars(false)
   STATE = "done"; setIcon("🎙️")
   if code == 0 then
-    barColor(C.done); setTitle("✓ Text ready"); setSub("paste it")
+    barColor(C.done); setTitle("✓ متن آماده شد"); setSub("Cmd+V بزن")
   else
     setTitle(failTitle); setSub(failSub)
   end
@@ -94,8 +94,8 @@ local function beginRecording()
   setIcon("🔴")
   barColor(C.bar)
   showBars(true)
-  setTitle("● Recording")
-  setSub("0:00  —  click to stop")
+  setTitle("● در حال ضبط")
+  setSub("۰:۰۰  —  برای پایان کلیک کن")
   positionHud()
   hud:show(0.12)
 
@@ -110,12 +110,12 @@ local function beginRecording()
   tickTimer = hs.timer.doEvery(1, function()
     if STATE ~= "recording" then return end
     local e = os.time() - startTime
-    setSub(string.format("%d:%02d  —  click to stop", e // 60, e % 60))
+    setSub(string.format("%d:%02d  —  برای پایان کلیک کن", e // 60, e % 60))
   end)
 
   task = hs.task.new(RECORD, function(code)
     local f = io.open(LOG, "a"); if f then f:write(os.date() .. " record exit=" .. tostring(code) .. "\n"); f:close() end
-    finish(code, "Nothing recorded", "try again")
+    finish(code, "چیزی ضبط نشد", "دوباره امتحان کن")
   end)
   task:start()
 end
@@ -125,8 +125,8 @@ local function endRecording()
   setIcon("⏳")
   stopTimers()
   showBars(false)
-  setTitle("⏳ Transcribing…")
-  setSub("one moment")
+  setTitle("⏳ در حال تبدیل به متن…")
+  setSub("چند لحظه…")
   local f = io.open(STOP_FILE, "w"); if f then f:close() end
 end
 
@@ -146,17 +146,17 @@ end
 function dictateAgain()
   if STATE == "recording" or STATE == "processing" then return end
   local btn, hint = hs.dialog.textPrompt(
-    "Transcribe the last recording again",
-    "If it got a word wrong, type the correct spelling (optional) — e.g. names or product terms",
-    "", "Transcribe", "Cancel")
-  if btn ~= "Transcribe" then return end
+    "تبدیل دوبارهٔ آخرین ضبط",
+    "اگر کلمه‌ای را اشتباه نوشت، شکل درستش را بنویس (اختیاری) — مثل اسم‌ها و اصطلاح‌ها",
+    "", "تبدیل کن", "بی‌خیال")
+  if btn ~= "تبدیل کن" then return end
 
   if hideTimer then hideTimer:stop(); hideTimer = nil end
   STATE = "processing"
   setIcon("⏳")
   showBars(false)
-  setTitle("↻ Transcribing again…")
-  setSub((hint and hint ~= "") and hint or "one moment")
+  setTitle("↻ تبدیل دوباره…")
+  setSub((hint and hint ~= "") and hint or "چند لحظه…")
   positionHud()
   hud:show(0.12)
 
@@ -164,7 +164,7 @@ function dictateAgain()
   if hint and hint ~= "" then a[1] = hint end
   task = hs.task.new(RETRY, function(code)
     local f = io.open(LOG, "a"); if f then f:write(os.date() .. " again exit=" .. tostring(code) .. "\n"); f:close() end
-    finish(code, "No previous recording", "record one first")
+    finish(code, "ضبط قبلی پیدا نشد", "اول یک بار ضبط کن")
   end, a)
   task:start()
 end
@@ -184,4 +184,4 @@ end
 hs.hotkey.bind({ "ctrl", "alt" }, hs.keycodes.map["d"] or 2, dictateToggle)
 hs.hotkey.bind({ "ctrl", "alt" }, hs.keycodes.map["r"] or 15, dictateAgain)
 
-hs.alert.show("Dictate 🎙️ ready — Ctrl+Alt+D record · Ctrl+Alt+R again")
+hs.alert.show("Dictate 🎙️ آماده شد — Ctrl+Alt+D ضبط · Ctrl+Alt+R دوباره")

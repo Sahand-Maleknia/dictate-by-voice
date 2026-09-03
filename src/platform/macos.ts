@@ -38,6 +38,7 @@ function parseAudioDevices(stderr: string): AudioDevice[] {
 
 export const macos: Platform = {
   id: 'macos',
+  pasteKey: 'Cmd+V',
 
   listDevices() {
     return new Promise<AudioDevice[]>((resolve) => {

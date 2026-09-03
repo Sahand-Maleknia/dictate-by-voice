@@ -8,6 +8,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, unlinkSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import type { AudioDevice, Platform } from './platform/index.js';
+import { M } from './messages.js';
 
 /**
  * Opus at 32 kbps mono — a speech codec at a speech bitrate.
@@ -98,7 +99,7 @@ export function record(platform: Platform, opts: RecordOptions): Promise<string>
     ff.on('error', (e) => {
       if (poll) clearInterval(poll);
       rl?.close();
-      reject(new Error(`ffmpeg failed to start: ${e.message}. Is ffmpeg installed?`));
+      reject(new Error(M.ffmpegMissing(e.message)));
     });
     ff.on('close', (code) => {
       if (poll) clearInterval(poll);
@@ -106,7 +107,7 @@ export function record(platform: Platform, opts: RecordOptions): Promise<string>
       platform.cue('stop');
       // ffmpeg exits 255 when we send 'q' mid-stream; that's a normal stop.
       if (code !== 0 && code !== 255) {
-        reject(new Error(`ffmpeg exited ${code}. ${ffErr.trim()}`));
+        reject(new Error(M.ffmpegFailed(code, ffErr.trim())));
         return;
       }
       resolve(opts.outPath);

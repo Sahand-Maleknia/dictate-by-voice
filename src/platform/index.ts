@@ -12,6 +12,7 @@
  */
 
 import { platform as osPlatform } from 'node:os';
+import { M } from '../messages.js';
 
 export interface AudioDevice {
   /**
@@ -27,6 +28,8 @@ export interface AudioDevice {
 
 export interface Platform {
   readonly id: 'macos' | 'windows' | 'linux';
+  /** What the user presses to paste — Cmd+V on a Mac, Ctrl+V everywhere else. */
+  readonly pasteKey: string;
   /** Every microphone ffmpeg can see, in the order the OS reports them. */
   listDevices(): Promise<AudioDevice[]>;
   /** The ffmpeg input flags for this device, e.g. ['-f','avfoundation','-i',':0']. */
@@ -52,11 +55,9 @@ export async function currentPlatform(): Promise<Platform> {
   switch (osPlatform()) {
     case 'darwin':
       return (await import('./macos.js')).macos;
+    case 'win32':
+      return (await import('./windows.js')).windows;
     default:
-      throw new Error(
-        `dictate does not support ${osPlatform()} yet — only macOS today. ` +
-          'Adding a platform is one file against the Platform interface; ' +
-          'see CONTRIBUTING.md, and please open an issue so the work is not duplicated.',
-      );
+      throw new Error(M.unsupportedPlatform(osPlatform()));
   }
 }
