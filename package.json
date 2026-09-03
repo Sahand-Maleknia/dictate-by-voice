@@ -4,7 +4,7 @@
   "description": "Press a key, talk, paste. Local-first voice dictation for the desktop, tuned for Persian (and good at everything else).",
   "type": "module",
   "license": "MIT",
-  "author": "siavash-smf",
+  "author": "Siavash Samimifard",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/siavash-smf/dictate.git"
