@@ -10,6 +10,10 @@
 -- Install: copy this into ~/.hammerspoon/init.lua (or dofile() it from there),
 -- set REPO below to where you cloned this project, and reload Hammerspoon.
 
+-- Loaded so the `hs` command-line tool can talk to this config, which is what
+-- tools/make-demo-gif.sh uses to find the card. Harmless if you never do.
+require("hs.ipc")
+
 local REPO = os.getenv("HOME") .. "/dictate"
 local RECORD = REPO .. "/bin/dictate-hold.command"
 local RETRY = REPO .. "/bin/dictate-again.command"
@@ -30,7 +34,11 @@ local startTime = 0
 local waveTimer, tickTimer, hideTimer
 local task = nil
 
-local hud = hs.canvas.new({ x = 0, y = 0, w = W, h = H })
+-- Global on purpose: tools/make-demo-gif.sh asks the card where it is rather
+-- than recomputing its position, which is the only way to get that right on a
+-- multi-monitor setup (the card follows the focused screen).
+dictateHud = hs.canvas.new({ x = 0, y = 0, w = W, h = H })
+local hud = dictateHud
 local els = {
   { type = "rectangle", action = "fill", fillColor = C.bg, roundedRectRadii = { xRadius = 18, yRadius = 18 } },
   { type = "text", text = "", textSize = 17, textColor = C.text, textAlignment = "center",
@@ -183,5 +191,9 @@ end
 -- R keys, so the hotkeys keep working under a non-Latin keyboard layout.
 hs.hotkey.bind({ "ctrl", "alt" }, hs.keycodes.map["d"] or 2, dictateToggle)
 hs.hotkey.bind({ "ctrl", "alt" }, hs.keycodes.map["r"] or 15, dictateAgain)
+
+-- Give the card a real position at load time, so its frame is meaningful before
+-- the first recording (see the note on dictateHud above).
+positionHud()
 
 hs.alert.show("Dictate 🎙️ آماده شد — Ctrl+Alt+D ضبط · Ctrl+Alt+R دوباره")
