@@ -46,7 +46,10 @@ export function parseDshowDevices(stderr: string): AudioDevice[] {
   let pending: AudioDevice | null = null;
 
   for (const raw of stderr.split('\n')) {
-    const line = raw.replace(/^\[dshow @ [^\]]*\]\s?/, '').trim();
+    // ffmpeg's log prefix on these lines was `[dshow @ 0x…]` up to ~ffmpeg 7
+    // and became `[in#0 @ 0x…]` in ffmpeg 8+. Strip either bracketed `… @ …`
+    // tag so the device lines parse on both.
+    const line = raw.replace(/^\[[^\]]*@[^\]]*\]\s?/, '').trim();
 
     const header = /^DirectShow (audio|video) devices/i.exec(line);
     if (header) {
